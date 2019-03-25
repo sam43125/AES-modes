@@ -1,61 +1,195 @@
-// Reference: http://www.cppblog.com/arthaslee/archive/2010/12/01/135186.html 
-// https://blog.csdn.net/weixin_42314534/article/details/81840131
-#include <iostream>
-#include <aes.h>
+// g++ -g3 -ggdb -O0 -DDEBUG -I/usr/include/cryptopp aes-modes.cpp -lcryptopp -lpthread
+// g++ -g -O2 -DNDEBUG -I/usr/include/cryptopp aes-modes.cpp -lcryptopp -lpthread
 
-//#pragma comment(lib, "cryptlib.lib")
+#include <fstream>
+using std::ofstream;
+using std::endl;
 
-using namespace std;
-using namespace CryptoPP;
+#include <string>
+using std::string;
 
-int main() {
+#include <algorithm>
+using std::copy;
 
-    //AES中使用的固定參數是以類AES中定義的enum數據類型出現的，而不是成員函數或變量
-    //因此需要用::符號來索引
-    cout << "AES Parameters: " << endl;
-    cout << "Algorithm name : " << AES::StaticAlgorithmName() << endl;
+#include <cryptopp/modes.h>
+using CryptoPP::ECB_Mode;
+using CryptoPP::CBC_Mode;
 
-    //Crypto++庫中一般用字節數來表示長度，而不是常用的字節數
-    cout << "Block size     : " << AES::BLOCKSIZE * 8 << endl;
-    cout << "Min key length : " << AES::MIN_KEYLENGTH * 8 << endl;
-    cout << "Max key length : " << AES::MAX_KEYLENGTH * 8 << endl;
+#include <cryptopp/aes.h>
+using CryptoPP::AES;
 
-    //AES中只包含一些固定的數據，而加密解密的功能由AESEncryption和AESDecryption來完成
-    //加密過程
-    AESEncryption aesEncryptor; //加密器 
+#include <cryptopp/hex.h>
+using CryptoPP::HexEncoder;
+using CryptoPP::HexDecoder;
 
-    unsigned char aesKey[AES::DEFAULT_KEYLENGTH];  //密鑰
-    unsigned char inBlock[AES::BLOCKSIZE] = "123456789";    //要加密的數據塊
-    unsigned char outBlock[AES::BLOCKSIZE]; //加密後的密文塊
-    unsigned char xorBlock[AES::BLOCKSIZE]; //必須設定為全零
+#include <cryptopp/filters.h>
+using CryptoPP::StringSink;
+using CryptoPP::StringSource;
+using CryptoPP::StreamTransformationFilter;
 
-    memset(xorBlock, 0, AES::BLOCKSIZE); //置零
+//#define bytelen(x) (sizeof(x))/(sizeof(byte))
+using CryptoPP::byte;
 
-    aesEncryptor.SetKey(aesKey, AES::DEFAULT_KEYLENGTH);  //設定加密密鑰
-    aesEncryptor.ProcessAndXorBlock(inBlock, xorBlock, outBlock);  //加密
+//string PKCS7_PADDING(string strIn) {
+//    string strOut = strIn;
+//    size_t padNum = AES::BLOCKSIZE - strIn.length() % AES::BLOCKSIZE;
+//    for (size_t i = 0; i < padNum; i++) {
+//        strOut += padNum;
+//    }
+//    if (padNum == 0)
+//        strOut += string(AES::BLOCKSIZE, AES::BLOCKSIZE);
+//    return strOut;
+//}
 
-    //以16進制顯示加密後的數據
-    for (int i = 0; i < 16; i++) {
-        cout << hex << (int)outBlock[i] << " ";
+enum Padding {
+    Z, P
+};
 
+const string ECBEncrypt(const byte* plain, size_t len, const byte* key, Padding p) {
+    string cipher, encoded;
+    ECB_Mode<AES>::Encryption e(key, AES::DEFAULT_KEYLENGTH);
+    StringSource(plain, len, true,
+        new StreamTransformationFilter(
+            e,
+            new StringSink(cipher),
+            p == Z ?
+            StreamTransformationFilter::ZEROS_PADDING : StreamTransformationFilter::PKCS_PADDING
+        )
+    );
+    StringSource(cipher, true,
+        new HexEncoder(
+            new StringSink(encoded),
+            p == Z ?
+            StreamTransformationFilter::ZEROS_PADDING : StreamTransformationFilter::PKCS_PADDING
+        )
+    );
+    return encoded;
+}
+
+const string ECBDecrypt(const string& cipher, const byte* key, Padding p, bool isHex = false) {
+    string recovered;
+    ECB_Mode<AES>::Decryption d(key, AES::DEFAULT_KEYLENGTH);
+    if (isHex) {
+        StringSource(cipher, true,
+            new HexDecoder(
+                new StreamTransformationFilter(
+                    d,
+                    new StringSink(recovered),
+                    p == Z ?
+                    StreamTransformationFilter::ZEROS_PADDING : StreamTransformationFilter::PKCS_PADDING
+                )
+            )
+        );
     }
-    cout << endl;
-
-    //解密
-    AESDecryption aesDecryptor;
-    unsigned char plainText[AES::BLOCKSIZE];
-
-    aesDecryptor.SetKey(aesKey, AES::DEFAULT_KEYLENGTH);
-    //細心的朋友注意到這裡的函數不是之前在DES中出現過的：ProcessBlock，
-    //而是多了一個Xor。其實，ProcessAndXorBlock也有DES版本。用法跟AES版本差不多。
-    //筆者分別在兩份代碼中列出這兩個函數，有興趣的朋友可以自己研究一下有何差異。
-    aesDecryptor.ProcessAndXorBlock(outBlock, xorBlock, plainText);
-
-
-    for (int i = 0; i < 16; i++) {
-        cout << plainText[i];
+    else {
+        StringSource(cipher, true,
+            new StreamTransformationFilter(
+                d,
+                new StringSink(recovered),
+                p == Z ?
+                StreamTransformationFilter::ZEROS_PADDING : StreamTransformationFilter::PKCS_PADDING
+            )
+        );
     }
-    cout << endl;
+    return recovered;
+}
 
+const string CBCEncrypt(const byte* plain, size_t len, const byte* key, const byte* iv, Padding p) {
+    string cipher, encoded;
+    CBC_Mode<AES>::Encryption e(key, AES::DEFAULT_KEYLENGTH, iv);
+    StringSource(plain, len, true,
+        new StreamTransformationFilter(
+            e,
+            new StringSink(cipher),
+            p == Z ?
+            StreamTransformationFilter::ZEROS_PADDING : StreamTransformationFilter::PKCS_PADDING
+        )  
+    );
+    StringSource(cipher, true,
+        new HexEncoder(
+            new StringSink(encoded), 
+            p == Z ?
+            StreamTransformationFilter::ZEROS_PADDING : StreamTransformationFilter::PKCS_PADDING
+        )
+    );
+    return encoded;
+}
+
+const string CBCDecrypt(const string& cipher, const byte* key, const byte* iv, Padding p, bool isHex = false) {
+    string recovered;
+    CBC_Mode<AES>::Decryption d(key, AES::DEFAULT_KEYLENGTH, iv);
+    if (isHex) {
+        StringSource(cipher, true,
+            new HexDecoder(
+                new StreamTransformationFilter(
+                    d,
+                    new StringSink(recovered),
+                    p == Z ?
+                    StreamTransformationFilter::ZEROS_PADDING : StreamTransformationFilter::PKCS_PADDING
+                )
+            )
+        );
+    }
+    else{
+        StringSource(cipher, true,
+            new StreamTransformationFilter(
+                d,
+                new StringSink(recovered),
+                p == Z ?
+                StreamTransformationFilter::ZEROS_PADDING : StreamTransformationFilter::PKCS_PADDING
+            )
+        );
+    }
+    return recovered;
+}
+
+
+const byte* str2bytes(const string& str) {
+    // Padding 0x00 to result
+    byte* result = new byte[str.length() + 1];
+    size_t i = 0;
+    for (; i < str.length(); i++)
+        result[i] = str[i];
+    result[i] = 0x00;
+    return result;
+}
+
+#ifndef NO_MAIN
+
+int main(int argc, char* argv[]) {
+
+    ofstream fout("Out.txt");
+
+    byte key[AES::DEFAULT_KEYLENGTH];
+    const unsigned char a[] = "1234567890123456";
+    copy(a, a + sizeof(a) - 1, key);
+
+    byte iv[AES::BLOCKSIZE];
+    const unsigned char b[] = "0000000000000000";
+    copy(b, b + sizeof(b) - 1, iv);
+
+    const string plain = "AES is efficient in both software and hardware.";
+    // 41455320697320656666696369656e7420696e20626f746820736f66747761726520616e642068617264776172652e00
+    string encoded;
+
+    const byte* bplain = str2bytes(plain);
+    size_t len = plain.length() + 1;
+
+    encoded = ECBEncrypt(bplain, len, key, Z);
+    fout << encoded.c_str() << endl << endl;
+
+    encoded = ECBEncrypt(bplain, len, key, P);
+    fout << encoded.c_str() << endl << endl;
+
+    encoded = CBCEncrypt(bplain, len, key, iv, Z);
+    fout << encoded.c_str() << endl << endl;
+
+    encoded = CBCEncrypt(bplain, len, key, iv, P);
+    fout << encoded.c_str() << endl << endl;
+
+    delete[] bplain;
+    fout.close();
     return 0;
 }
+
+#endif
