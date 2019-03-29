@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.28307.421
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AES", "AES\AES.vcxproj", "{4F5BD91F-88D9-4ECA-99B4-F7E7E03583E1}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTest", "UnitTest\UnitTest.vcxproj", "{3594ABB2-928E-4BB2-A123-F54D12BFC0C6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -15,6 +17,10 @@ Global
 		{4F5BD91F-88D9-4ECA-99B4-F7E7E03583E1}.Debug|x64.Build.0 = Debug|x64
 		{4F5BD91F-88D9-4ECA-99B4-F7E7E03583E1}.Release|x64.ActiveCfg = Release|x64
 		{4F5BD91F-88D9-4ECA-99B4-F7E7E03583E1}.Release|x64.Build.0 = Release|x64
+		{3594ABB2-928E-4BB2-A123-F54D12BFC0C6}.Debug|x64.ActiveCfg = Debug|x64
+		{3594ABB2-928E-4BB2-A123-F54D12BFC0C6}.Debug|x64.Build.0 = Debug|x64
+		{3594ABB2-928E-4BB2-A123-F54D12BFC0C6}.Release|x64.ActiveCfg = Release|x64
+		{3594ABB2-928E-4BB2-A123-F54D12BFC0C6}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
