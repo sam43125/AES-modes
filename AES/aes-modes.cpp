@@ -27,7 +27,7 @@ using CryptoPP::StringSink;
 using CryptoPP::StringSource;
 using CryptoPP::StreamTransformationFilter;
 
-using CryptoPP::byte;
+typedef unsigned char byte;
 
 enum Padding {
     Z, P
