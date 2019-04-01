@@ -1,9 +1,13 @@
 // g++ -g3 -ggdb -O0 -DDEBUG -I/usr/include/cryptopp aes-modes.cpp -lcryptopp -lpthread
 // g++ -g -O2 -DNDEBUG -I/usr/include/cryptopp aes-modes.cpp -lcryptopp -lpthread
 
-#include <fstream>
-using std::ofstream;
+#include <iostream>
+using std::cout;
 using std::endl;
+
+#include <fstream>
+using std::ifstream;
+using std::ofstream;
 
 #include <string>
 using std::string;
@@ -136,33 +140,55 @@ const string CBCDecrypt(const string& cipher, const byte* key, const byte* iv, P
 
 int main(int argc, char* argv[]) {
 
-    ofstream fout("Out.txt");
+    {
+        ofstream fout("Out.txt");
 
-    byte key[AES::DEFAULT_KEYLENGTH];
-    const unsigned char a[] = "1234567890123456";
-    copy(a, a + sizeof(a) - 1, key);
+        byte key[AES::DEFAULT_KEYLENGTH];
+        const unsigned char a[] = "1234567890123456";
+        copy(a, a + sizeof(a) - 1, key);
 
-    byte iv[AES::BLOCKSIZE];
-    const unsigned char b[] = "0000000000000000";
-    copy(b, b + sizeof(b) - 1, iv);
+        byte iv[AES::BLOCKSIZE];
+        const unsigned char b[] = "0000000000000000";
+        copy(b, b + sizeof(b) - 1, iv);
 
-    const string plain = "AES is efficient in both software and hardware.";
-    // 41455320697320656666696369656e7420696e20626f746820736f66747761726520616e642068617264776172652e
-    string encoded;
+        const string plain = "AES is efficient in both software and hardware.";
+        // 41455320697320656666696369656e7420696e20626f746820736f66747761726520616e642068617264776172652e
+        string encoded;
 
-    encoded = ECBEncrypt(plain, key, Z);
-    fout << encoded.c_str() << endl << endl;
+        encoded = ECBEncrypt(plain, key, Z);
+        fout << encoded.c_str() << endl << endl;
 
-    encoded = ECBEncrypt(plain, key, P);
-    fout << encoded.c_str() << endl << endl;
+        encoded = ECBEncrypt(plain, key, P);
+        fout << encoded.c_str() << endl << endl;
 
-    encoded = CBCEncrypt(plain, key, iv, Z);
-    fout << encoded.c_str() << endl << endl;
+        encoded = CBCEncrypt(plain, key, iv, Z);
+        fout << encoded.c_str() << endl << endl;
 
-    encoded = CBCEncrypt(plain, key, iv, P);
-    fout << encoded.c_str() << endl << endl;
+        encoded = CBCEncrypt(plain, key, iv, P);
+        fout << encoded.c_str() << endl << endl;
 
-    fout.close();
+        fout.close();
+    }
+
+    {
+        ifstream fin("onsite_NEW.txt");
+
+        byte key[AES::DEFAULT_KEYLENGTH];
+        const unsigned char a[] = "RandomNumbers000";
+        copy(a, a + sizeof(a) - 1, key);
+
+        byte iv[AES::BLOCKSIZE];
+        const unsigned char b[] = "9999999999999999";
+        copy(b, b + sizeof(b) - 1, iv);
+
+        string cipher;
+
+        while (fin >> cipher) {
+            cout << CBCDecrypt(cipher, key, iv, Z, true) << endl;
+        }
+
+        fin.close();
+    }
     return 0;
 }
 
